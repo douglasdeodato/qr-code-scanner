@@ -1,61 +1,59 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const cors = require('cors');
 const app = express();
-const cors = require('cors'); // Adicione cors para permitir requisições do frontend
-const PORT = process.env.PORT || 3001;
+const port = 3001;
 
-// Middleware para parsear JSON
+// Habilitar CORS para permitir requisições do frontend
+app.use(cors());
+
+// Para receber dados JSON nas requisições
 app.use(express.json());
-app.use(cors()); // Permite requisições de qualquer origem
 
-// Rota para salvar QR Codes
+// Caminho do arquivo JSON onde os QR Codes confirmados serão armazenados
+const confirmedQRCodeFile = path.join(__dirname, 'confirmed_qrcodes.json');
+
+// Rota para salvar os QR Codes confirmados
 app.post('/api/save-confirmed-qr', (req, res) => {
+  const confirmedQRs = req.body;
+
+  // Verifica se há dados para salvar
+  if (!Array.isArray(confirmedQRs)) {
+    return res.status(400).json({ message: 'Os dados fornecidos não são um array.' });
+  }
+
   try {
-    const newQRCodes = req.body;
-    console.log('QR Codes recebidos:', newQRCodes);
-
-    // Caminho absoluto para o arquivo JSON
-    const filePath = path.join(__dirname, 'confirmed_qrcodes.json');
-    console.log('Caminho do arquivo:', filePath);
-
-    // Ler conteúdo existente
-    let confirmedQRs = [];
-    try {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      confirmedQRs = JSON.parse(fileContent);
-    } catch (readError) {
-      console.log('Criando novo arquivo de QR Codes');
-    }
-
-    // Adicionar novos QR Codes únicos
-    newQRCodes.forEach(qrCode => {
-      if (!confirmedQRs.includes(qrCode)) {
-        confirmedQRs.push(qrCode);
-      }
-    });
-
-    // Salvar arquivo
-    fs.writeFileSync(filePath, JSON.stringify(confirmedQRs, null, 2));
-    
-    console.log('QR Codes salvos:', confirmedQRs);
-    
-    res.status(200).json({ 
-      message: 'QR Codes salvos com sucesso!',
-      savedQRCodes: newQRCodes 
-    });
+    // Salva os QR Codes confirmados no arquivo JSON
+    fs.writeFileSync(confirmedQRCodeFile, JSON.stringify(confirmedQRs, null, 2));
+    res.status(200).json({ message: 'QR Codes confirmados salvos com sucesso!' });
   } catch (error) {
     console.error('Erro ao salvar QR Codes:', error);
-    res.status(500).json({ message: 'Erro ao salvar QR Codes' });
+    res.status(500).json({ message: 'Erro ao salvar QR Codes.' });
   }
 });
 
-// Rota de teste
-app.get('/test', (req, res) => {
-  res.json({ message: 'Servidor funcionando!' });
+// Rota para obter os QR Codes confirmados
+app.get('/api/get-confirmed-qr', (req, res) => {
+  try {
+    // Lê o conteúdo do arquivo JSON com os QR Codes confirmados
+    const fileContent = fs.readFileSync(confirmedQRCodeFile, 'utf8');
+    const confirmedQRs = JSON.parse(fileContent);
+
+    // Retorna os QR Codes confirmados
+    res.status(200).json({ savedQRCodes: confirmedQRs });
+  } catch (error) {
+    console.error('Erro ao obter QR Codes confirmados:', error);
+    res.status(500).json({ message: 'Erro ao obter QR Codes confirmados.' });
+  }
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+// Rota padrão
+app.get('/', (req, res) => {
+  res.send('API do QR Code está funcionando!');
+});
+
+// Inicializa o servidor na porta configurada
+app.listen(port, () => {
+  console.log(`Servidor rodando em http://localhost:${port}`);
 });

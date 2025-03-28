@@ -1,13 +1,18 @@
-// src/App.js
-
 import React from 'react';
-import QRCodeReader from './QRCodeReader'; // Importa o componente QRCodeReader
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import QRCodeReader from './QRCodeReader';
+import ConfirmedNames from './ConfirmedNames'; // Corrigido para ConfirmedNames.js
 
 const App = () => {
   return (
-    <div>
-      <QRCodeReader /> {/* Renderiza o componente QRCodeReader */}
-    </div>
+    <Router>
+      <div>
+        <Routes>
+          <Route path="/" element={<QRCodeReader />} />
+          <Route path="/confirmed-names" element={<ConfirmedNames />} /> {/* Corrigido o caminho */}
+        </Routes>
+      </div>
+    </Router>
   );
 };
 

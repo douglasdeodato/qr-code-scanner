@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { BrowserMultiFormatReader } from '@zxing/library';
 
 const QRCodeReader = () => {
@@ -120,6 +121,11 @@ const QRCodeReader = () => {
           </ul>
         </div>
       )}
+
+      {/* Link para ver os nomes confirmados */}
+      <Link to="/confirmed-names" style={{ color: 'blue', textDecoration: 'underline' }}>
+        Clique aqui para ver nomes confirmados
+      </Link>
     </div>
   );
 };
