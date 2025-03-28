@@ -2,69 +2,82 @@ import React, { useState, useRef, useEffect } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
 
 const QRCodeReader = () => {
-  const [qrData, setQrData] = useState(null); // Estado para armazenar o conteúdo do QR Code
-  const [message, setMessage] = useState(''); // Estado para mostrar a mensagem de confirmação
-  const [confirmedQRs, setConfirmedQRs] = useState([]); // Estado para armazenar QR Codes confirmados
-  const videoRef = useRef(null); // Ref para capturar o elemento de vídeo
+  const [qrData, setQrData] = useState(null);
+  const [message, setMessage] = useState('');
+  const [confirmedQRs, setConfirmedQRs] = useState([]);
+  const videoRef = useRef(null);
 
-  // Lista de QR Codes válidos diretamente no código
+  // Lista de QR Codes válidos
   const validQRs = [
-    'https://www.qrcode-monkey.com', // Removido o QR Code de exemplo
+    'https://www.qrcode-monkey.com',
     'https://example.com',
   ];
 
-  // Função para verificar se o QR Code lido está na lista
+  // Função para verificar se o QR Code está na lista de válidos
   const checkQRCode = (data) => {
-    return validQRs.includes(data); // Verifica se o dado do QR Code está na lista
+    return validQRs.includes(data);
   };
 
-  // Função para iniciar o leitor de QR Code
   useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader(); // Cria uma instância do leitor de QR Code
+    const codeReader = new BrowserMultiFormatReader();
 
     if (videoRef.current) {
       codeReader.decodeFromVideoDevice(null, videoRef.current, (result, err) => {
         if (result) {
           const scannedData = result.getText();
-          console.log('QR Code lido:', scannedData);  // Depuração
+          console.log('QR Code lido:', scannedData);
 
-          setQrData(scannedData); // Armazena o conteúdo do QR Code quando detectado
-          const isValid = checkQRCode(scannedData); // Verifica se o QR Code é válido
+          setQrData(scannedData);
+          const isValid = checkQRCode(scannedData);
 
           if (isValid) {
-            setMessage('QR Code confirmado! Possuímos ele na lista.'); // Mensagem de sucesso
+            // Mensagem de sucesso
+            setMessage('QR Code confirmado! Possuímos ele na lista.');
+            
+            // Salva apenas QR Codes confirmados
             setConfirmedQRs((prevConfirmedQRs) => {
-              // Adiciona o QR Code confirmado à lista
-              const newConfirmedQRs = [...prevConfirmedQRs, scannedData];
-              saveConfirmedQRs(newConfirmedQRs); // Enviar os dados para o servidor
-              return newConfirmedQRs;
+              // Verifica se o QR Code já não está na lista
+              if (!prevConfirmedQRs.includes(scannedData)) {
+                const newConfirmedQRs = [...prevConfirmedQRs, scannedData];
+                
+                // Salva apenas os QR Codes confirmados
+                saveConfirmedQRs(newConfirmedQRs);
+                return newConfirmedQRs;
+              }
+              return prevConfirmedQRs;
             });
           } else {
-            setMessage('Este QR Code não está na lista.'); // Mensagem de erro
+            // Mensagem de erro se o QR Code não for válido
+            setMessage('Este QR Code não está na lista.');
           }
         }
         if (err) {
-          console.error(err); // Caso haja erro durante a leitura
+          console.error(err);
         }
       });
     }
 
-    // Cleanup: limpar quando o componente for desmontado
     return () => {
-      codeReader.reset(); // Resetando o leitor
+      codeReader.reset();
     };
-  }, []); // A dependência foi removida para evitar re-renderizações desnecessárias
+  }, []);
 
-  // Função para salvar os QR Codes confirmados no servidor
+  // Função para salvar os QR Codes confirmados
   const saveConfirmedQRs = async (data) => {
     try {
-      const response = await fetch('/api/save-confirmed-qr', {
+      const response = await fetch('http://localhost:3001/api/save-confirmed-qr', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ confirmedQRs: data }), // Envia os dados dos QR Codes confirmados
+        // Envia apenas os QR Codes confirmados
+        body: JSON.stringify(data), 
       });
+
+      // Adicione log de resposta
+      const responseData = await response.json();
+      console.log('Resposta do servidor:', responseData);
+
       if (response.ok) {
         console.log('QR Codes salvos com sucesso!');
       } else {
@@ -86,6 +99,7 @@ const QRCodeReader = () => {
       {message && (
         <div
           style={{
+            // Define a cor baseada na mensagem
             color: message.includes('confirmado') ? 'green' : 'red',
             fontWeight: 'bold',
             marginTop: '10px',
@@ -94,8 +108,20 @@ const QRCodeReader = () => {
           {message}
         </div>
       )}
+      
+      {/* Mostra a lista de QR Codes confirmados */}
+      {confirmedQRs.length > 0 && (
+        <div>
+          <h3>QR Codes Confirmados:</h3>
+          <ul>
+            {confirmedQRs.map((qr, index) => (
+              <li key={index}>{qr}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
 
-export default QRCodeReader;  
+export default QRCodeReader;

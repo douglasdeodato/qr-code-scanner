@@ -2,51 +2,60 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const PORT = 3001;
+const cors = require('cors'); // Adicione cors para permitir requisições do frontend
+const PORT = process.env.PORT || 3001;
 
-app.use(express.json()); // Para que o express consiga entender JSON no corpo das requisições
+// Middleware para parsear JSON
+app.use(express.json());
+app.use(cors()); // Permite requisições de qualquer origem
 
-// Endpoint para salvar os QR Codes confirmados
+// Rota para salvar QR Codes
 app.post('/api/save-confirmed-qr', (req, res) => {
-  const qrCodes = req.body; // Os QR Codes confirmados enviados pelo frontend
+  try {
+    const newQRCodes = req.body;
+    console.log('QR Codes recebidos:', newQRCodes);
 
-  console.log('Recebendo QR Codes:', qrCodes); // Debug: Exibe os QR Codes recebidos
+    // Caminho absoluto para o arquivo JSON
+    const filePath = path.join(__dirname, 'confirmed_qrcodes.json');
+    console.log('Caminho do arquivo:', filePath);
 
-  // Caminho para o arquivo JSON
-  const filePath = path.join(__dirname, 'confirmed_qrcodes.json');
-  console.log('Caminho do arquivo JSON:', filePath); // Debug: Verificando o caminho do arquivo
-
-  // Lê o arquivo existente (se existir), senão cria um array vazio
-  fs.readFile(filePath, 'utf8', (err, data) => {
+    // Ler conteúdo existente
     let confirmedQRs = [];
-    
-    if (err && err.code !== 'ENOENT') {
-      console.error('Erro ao ler o arquivo:', err); // Debug: Exibe erros ao ler o arquivo
-      return res.status(500).json({ message: 'Erro ao ler o arquivo.' });
+    try {
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      confirmedQRs = JSON.parse(fileContent);
+    } catch (readError) {
+      console.log('Criando novo arquivo de QR Codes');
     }
 
-    // Se o arquivo existir e não estiver vazio, parseia o conteúdo
-    if (data) {
-      confirmedQRs = JSON.parse(data);
-      console.log('Dados existentes no arquivo:', confirmedQRs); // Debug: Exibe os dados existentes no arquivo
-    }
-
-    // Adiciona os novos QR Codes confirmados à lista
-    confirmedQRs.push(...qrCodes);
-
-    // Salva o arquivo JSON atualizado
-    fs.writeFile(filePath, JSON.stringify(confirmedQRs, null, 2), (err) => {
-      if (err) {
-        console.error('Erro ao salvar o arquivo:', err); // Debug: Exibe erros ao salvar o arquivo
-        return res.status(500).json({ message: 'Erro ao salvar o arquivo.' });
+    // Adicionar novos QR Codes únicos
+    newQRCodes.forEach(qrCode => {
+      if (!confirmedQRs.includes(qrCode)) {
+        confirmedQRs.push(qrCode);
       }
-      console.log('Arquivo atualizado com sucesso.'); // Debug: Confirma que o arquivo foi salvo
-      res.status(200).json({ message: 'QR Code(s) confirmados e salvos!' });
     });
-  });
+
+    // Salvar arquivo
+    fs.writeFileSync(filePath, JSON.stringify(confirmedQRs, null, 2));
+    
+    console.log('QR Codes salvos:', confirmedQRs);
+    
+    res.status(200).json({ 
+      message: 'QR Codes salvos com sucesso!',
+      savedQRCodes: newQRCodes 
+    });
+  } catch (error) {
+    console.error('Erro ao salvar QR Codes:', error);
+    res.status(500).json({ message: 'Erro ao salvar QR Codes' });
+  }
 });
 
-// Inicia o servidor
+// Rota de teste
+app.get('/test', (req, res) => {
+  res.json({ message: 'Servidor funcionando!' });
+});
+
+// Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
