@@ -98,4 +98,4 @@ const QRCodeReader = () => {
   );
 };
 
-export default QRCodeReader;
+export default QRCodeReader;  
